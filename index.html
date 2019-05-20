@@ -249,6 +249,179 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/gztkc.github.io/2019/05/20/java-threadlocal/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="GZTKC">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/gztkc.github.io/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/gztkc.github.io/2019/05/20/java-threadlocal/" itemprop="url">Java数据结构ThreadLocal</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-05-20T14:45:19+08:00">
+                2019-05-20
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing">
+                  <a href="/gztkc.github.io/categories/Java/" itemprop="url" rel="index">
+                    <span itemprop="name">Java</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <h2 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h2><p>JDK 1.8<br>IntelliJ IDEA 2018.1.5 (Ultimate Edition)</p>
+<h2 id="什么是ThreadLocal"><a href="#什么是ThreadLocal" class="headerlink" title="什么是ThreadLocal"></a>什么是ThreadLocal</h2><p>ThreadLocal类用来提供线程内部的局部变量。这种变量在多线程环境下访问（通过get和set方法访问）时能保证各个线程的变量相对独立于其他线程内的变量,不同的线程之间不会相互干扰。ThreadLocal实例通常来说都是private static类型的，这种变量在线程的生命周期内起作用,用于关联线程和线程上下文，减少同一个线程内多个函数或组件之间一些公共变量的传递的复杂度。(总的来说：ThreadLocal提供线程内部的局部变量，在本线程内随时随地可取，隔离其他线程。)</p>
+<h2 id="应用场景"><a href="#应用场景" class="headerlink" title="应用场景"></a>应用场景</h2><p>比如数据库事务操作，还有MVC框架中数据跨层传递。</p>
+<h2 id="设计分析"><a href="#设计分析" class="headerlink" title="设计分析"></a>设计分析</h2><p>若是让我设计ThreadLocal的功能，我想应该是构造一个 Map数据结构。这种设计要面临下面问题：<br>①Map数据因为会被多线程访问，可能存在资源竞争，必需对Map做同步安全操作，防止效率低下。<br>②随着运行时间越久，存在Map里的Thread越多，当Thread退出时，资源也没有释放，存在内存泄漏（OOM）问题。</p>
+<p>分析源码ThreadLocal是如何解决以上问题：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br></pre></td><td class="code"><pre><span class="line">public class ThreadLocal&lt;T&gt; &#123;</span><br><span class="line"></span><br><span class="line">  private static final int INITIAL_CAPACITY = 16;</span><br><span class="line"></span><br><span class="line">  private final int threadLocalHashCode = nextHashCode();</span><br><span class="line"></span><br><span class="line">  private static AtomicInteger nextHashCode = new AtomicInteger();</span><br><span class="line"></span><br><span class="line">  private static final int HASH_INCREMENT = 0x61c88647;</span><br><span class="line"></span><br><span class="line">  private Entry[] table;</span><br><span class="line"></span><br><span class="line">  /**</span><br><span class="line">  *set方法（入口）</span><br><span class="line">  **/</span><br><span class="line">  public void set(T value) &#123;</span><br><span class="line">      Thread t = Thread.currentThread();</span><br><span class="line">      ThreadLocalMap map = getMap(t);</span><br><span class="line">      if (map != null)</span><br><span class="line">          map.set(this, value);</span><br><span class="line">      else</span><br><span class="line">          createMap(t, value);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  /**</span><br><span class="line">  * get方法（入口）</span><br><span class="line">  **/</span><br><span class="line">  public T get() &#123;</span><br><span class="line">        Thread t = Thread.currentThread();</span><br><span class="line">        ThreadLocalMap map = getMap(t);</span><br><span class="line">        if (map != null) &#123;</span><br><span class="line">            ThreadLocalMap.Entry e = map.getEntry(this);</span><br><span class="line">            if (e != null) &#123;</span><br><span class="line">                @SuppressWarnings(&quot;unchecked&quot;)</span><br><span class="line">                T result = (T)e.value;</span><br><span class="line">                return result;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        return setInitialValue();</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  private void set(ThreadLocal&lt;?&gt; key, Object value) &#123;</span><br><span class="line"></span><br><span class="line">      // We don&apos;t use a fast path as with get() because it is at</span><br><span class="line">      // least as common to use set() to create new entries as</span><br><span class="line">      // it is to replace existing ones, in which case, a fast</span><br><span class="line">      // path would fail more often than not.</span><br><span class="line"></span><br><span class="line">      Entry[] tab = table;</span><br><span class="line">      int len = tab.length;</span><br><span class="line">      int i = key.threadLocalHashCode &amp; (len-1);</span><br><span class="line"></span><br><span class="line">      for (Entry e = tab[i];</span><br><span class="line">           e != null;</span><br><span class="line">           e = tab[i = nextIndex(i, len)]) &#123;</span><br><span class="line">          ThreadLocal&lt;?&gt; k = e.get();</span><br><span class="line"></span><br><span class="line">          if (k == key) &#123;</span><br><span class="line">              e.value = value;</span><br><span class="line">              return;</span><br><span class="line">          &#125;</span><br><span class="line"></span><br><span class="line">          if (k == null) &#123;</span><br><span class="line">              replaceStaleEntry(key, value, i);</span><br><span class="line">              return;</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      tab[i] = new Entry(key, value);</span><br><span class="line">      int sz = ++size;</span><br><span class="line">      if (!cleanSomeSlots(i, sz) &amp;&amp; sz &gt;= threshold)</span><br><span class="line">          rehash();</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  void createMap(Thread t, T firstValue) &#123;</span><br><span class="line">        t.threadLocals = new ThreadLocalMap(this, firstValue);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  ThreadLocalMap(ThreadLocal&lt;?&gt; firstKey, Object firstValue) &#123;</span><br><span class="line">        table = new Entry[INITIAL_CAPACITY];</span><br><span class="line">        int i = firstKey.threadLocalHashCode &amp; (INITIAL_CAPACITY - 1);</span><br><span class="line">        table[i] = new Entry(firstKey, firstValue);</span><br><span class="line">        size = 1;</span><br><span class="line">        setThreshold(INITIAL_CAPACITY);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  private static int nextHashCode() &#123;</span><br><span class="line">        return nextHashCode.getAndAdd(HASH_INCREMENT);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  ThreadLocalMap getMap(Thread t) &#123;</span><br><span class="line">      return t.threadLocals;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  private Entry getEntry(ThreadLocal&lt;?&gt; key) &#123;</span><br><span class="line">      int i = key.threadLocalHashCode &amp; (table.length - 1);</span><br><span class="line">      Entry e = table[i];</span><br><span class="line">      if (e != null &amp;&amp; e.get() == key)</span><br><span class="line">          return e;</span><br><span class="line">      else</span><br><span class="line">          return getEntryAfterMiss(key, i, e);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  private Entry getEntryAfterMiss(ThreadLocal&lt;?&gt; key, int i, Entry e) &#123;</span><br><span class="line">      Entry[] tab = table;</span><br><span class="line">      int len = tab.length;</span><br><span class="line"></span><br><span class="line">      while (e != null) &#123;</span><br><span class="line">          ThreadLocal&lt;?&gt; k = e.get();</span><br><span class="line">          if (k == key)</span><br><span class="line">              return e;</span><br><span class="line">          if (k == null)</span><br><span class="line">              //回收过期的</span><br><span class="line">              expungeStaleEntry(i);</span><br><span class="line">          else</span><br><span class="line">              i = nextIndex(i, len);</span><br><span class="line">          e = tab[i];</span><br><span class="line">      &#125;</span><br><span class="line">      return null;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  static class ThreadLocalMap &#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    static class Entry extends WeakReference&lt;ThreadLocal&lt;?&gt;&gt; &#123;</span><br><span class="line">          /** The value associated with this ThreadLocal. */</span><br><span class="line">          Object value;</span><br><span class="line"></span><br><span class="line">          Entry(ThreadLocal&lt;?&gt; k, Object v) &#123;</span><br><span class="line">              super(k);</span><br><span class="line">              value = v;</span><br><span class="line">          &#125;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">      ......</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>由此可见：</p>
+<h3 id="结论分析："><a href="#结论分析：" class="headerlink" title="结论分析："></a>结论分析：</h3><p>首先每个Thread（线程）内部都有一个Map结构数据ThreadLocalMap&lt;ThreadLocal, T&gt;，当我们对线程变量赋值时ThreadLocal.set(T value)时，其实是先获取当前线程Thread.currentThread()的内部属性字段ThreadLocalMap，然后以当前ThreadLocal为key设置线程变量值T。这种设计的精髓是，每个Thread线程都维护一份自己的ThreadLocalMap数据结构，这样就解决了上面所述问题中的①，不存在竞争条件。<br>既然每个Thread内部都维护一个ThreadLocalMap字典数据结构，字典的Key值是ThreadLocal，那么当某个ThreadLocal对象不再使用（没有其它地方再引用）时，每个已经关联了此ThreadLocal的线程怎么在其内部的ThreadLocalMap里做清除此资源呢？ThreadLocalMap没有继承java.util.Map类，而是自己实现了一套专门用来定时清理无效资源的字典结构。其内部存储实体结构Entry&lt;ThreadLocal, T&gt;继承自java.lan.ref.WeakReference，这样当ThreadLocal不再被引用时，因为弱引用机制原因， 当一个对象仅仅被weak reference指向, 而没有任何其他strong reference指向的时候（指当前线程已经销毁，强引用消失）, 如果GC运行, 那么这个对象会自动回收弱引用指向的实例内存，即其线程内部的ThreadLocalMap会释放其对ThreadLocal的引用从而让jvm回收ThreadLocal对象。这里是重点强调下，是回收ThreadLocal对象，而非整个Entry，所以线程变量中的值T对象还是在内存中存在的，所以内存泄漏的问题还没有完全解决（从上面源码可得出引用关系如下：<img src="/gztkc.github.io/2019/05/20/java-threadlocal/java-threadlocal-reference.png" alt="引用关系">）。接着分析JDK的实现，会发现在调用ThreadLocal.get()或者ThreadLocal.set(T)时都会定期执行回收无效的Entry操作。所以这就解决了上述问题中的第1个问题。<br>Lucene中的org.apache.lucene.util.CloseableThreadLocal类解决了上述特殊场景引起的问题：即解决JDK中因为定期才执行无效对象回收的问题。CloseableThreadLocal在内部维护了一个ThreadLocal，当执行CloseableThreadLocal.set(T)时，内部其实只是代理的把值赋给内部的ThreadLocal对象，即执行ThreadLocal.set(new WeakReference(T))。看到这里应该明白了，这里不是直接存储T，则是包装成弱引用对象，目的就是当gc且没有强引用的情况下，jvm可以回收此对象。避免当前线程还存活着的时候，因为内存不足而回收了弱引用对象。所以CloseableThreadLocal在内部还创建了一个数据，WeakHashMap&lt;Thread, T&gt;，当线程只要存活时，则T就至少有一个引用存在，所以不会被提前回收。但是又引入问题，对WeakHashMap的操作要做同步synchronized限制。这里需取平衡点。</p>
+<p>备注：<br>弱引用的对象是在正常情况下，不存在强应用的情况下，回收器遇到就回收，是被积极回收的对象。<br>软引用是仅在内存不够时才回收，属于消极回收。<br>static变量也称作静态变量，存在于方法区，静态变量和非静态变量的区别是：静态变量被所有的对象所共享，在内存中只有一个副本，它当且仅当在类初次加载时会被初始化。而非静态变量是对象所拥有的，在创建对象的时候被初始化，存在多个副本，各个对象拥有的副本互不影响。</p>
+<p>JDK8新特性：<br>每个ThreadLocal类都创建一个Map，然后用线程的ID threadID作为Map的key，要存储的局部变量作为Map的value，这样就能达到各个线程的值隔离的效果。这是最简单的设计方法，JDK最早期的ThreadLocal就是这样设计的。<br>但是，JDK后面优化了设计方案，现时JDK8 ThreadLocal的设计是：每个Thread维护一个ThreadLocalMap哈希表，这个哈希表的key是ThreadLocal实例本身，value才是真正要存储的值Object。<br>这个设计与一开始说的设计刚好相反，这样设计有如下几点优势：<br>1） 这样设计之后每个Map存储的Entry数量就会变小，因为之前的存储数量由Thread的数量决定，现在是由ThreadLocal的数量决定。<br>2） 当Thread销毁之后，对应的ThreadLocalMap也会随之销毁，能减少内存的使用。</p>
+<h3 id="过程分析："><a href="#过程分析：" class="headerlink" title="过程分析："></a>过程分析：</h3><ul>
+<li>调用get()操作获取ThreadLocal中对应当前线程存储的值时，进行了如下操作：<br>1 ) 获取当前线程Thread对象，进而获取此线程对象中维护的ThreadLocalMap对象。<br>2 ) 判断当前的ThreadLocalMap是否存在：</li>
+</ul>
+<p>如果存在，则以当前的ThreadLocal 为 key，调用ThreadLocalMap中的getEntry方法获取对应的存储实体 e。找到对应的存储实体 e，获取存储实体 e 对应的 value值，即为我们想要的当前线程对应此ThreadLocal的值，返回结果值。<br>如果不存在，则证明此线程没有维护的ThreadLocalMap对象，调用setInitialValue方法进行初始化。返回setInitialValue初始化的值。</p>
+<p>setInitialValue方法的操作如下：<br>1 ) 调用initialValue获取初始化的值。<br>2 ) 获取当前线程Thread对象，进而获取此线程对象中维护的ThreadLocalMap对象。<br>3 ) 判断当前的ThreadLocalMap是否存在：</p>
+<p>如果存在，则调用map.set设置此实体entry。</p>
+<p>如果不存在，则调用createMap进行ThreadLocalMap对象的初始化，并将此实体entry作为第一个值存放至ThreadLocalMap中。</p>
+<ul>
+<li>调用set(T value)操作设置ThreadLocal中对应当前线程要存储的值时，进行了如下操作：<br>1 ) 获取当前线程Thread对象，进而获取此线程对象中维护的ThreadLocalMap对象。<br>2 ) 判断当前的ThreadLocalMap是否存在：</li>
+</ul>
+<p>如果存在，则调用map.set设置此实体entry。</p>
+<p>如果不存在，则调用createMap进行ThreadLocalMap对象的初始化，并将此实体entry作为第一个值存放至ThreadLocalMap中。</p>
+<ul>
+<li>调用remove()操作删除ThreadLocal中对应当前线程已存储的值时，进行了如下操作：<br>1 ) 获取当前线程Thread对象，进而获取此线程对象中维护的ThreadLocalMap对象。<br>2 ) 判断当前的ThreadLocalMap是否存在， 如果存在，则调用map.remove，以当前ThreadLocal为key删除对应的实体entry。</li>
+</ul>
+<h2 id="弱引用例子"><a href="#弱引用例子" class="headerlink" title="弱引用例子"></a>弱引用例子</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">public static void main(String[] args) throws Exception &#123;</span><br><span class="line">        String s = new String(&quot;123&quot;);</span><br><span class="line">        WeakReference&lt;String&gt; weak = new WeakReference&lt;String&gt;(s);</span><br><span class="line">        s = null;</span><br><span class="line">        System.out.println(&quot;value:&quot; + soft.get());</span><br><span class="line">        System.gc();</span><br><span class="line">        System.out.println(&quot;value2:&quot; + soft.get());</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>输出</p>
+<p>这里输出结果是：<br>value:123<br>value2:null</p>
+<p>但s = null这行必须要加（去除强引用），如果不加，输出结果就是<br>value:123<br>value2:123</p>
+<h2 id="ThreadLocal例子"><a href="#ThreadLocal例子" class="headerlink" title="ThreadLocal例子"></a>ThreadLocal例子</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">public class ThreadLocalTest &#123;</span><br><span class="line"></span><br><span class="line">    private static  String constant = &quot;staticConstant&quot;;</span><br><span class="line"></span><br><span class="line">    private  static  ThreadLocal&lt;String&gt; threadLocal = new ThreadLocal&lt;&gt;();</span><br><span class="line"></span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line"></span><br><span class="line">        constant = &quot;constant1&quot;;</span><br><span class="line"></span><br><span class="line">        threadLocal.set(&quot;threadLocal1&quot;);</span><br><span class="line"></span><br><span class="line">        Thread thread = new Thread()&#123;</span><br><span class="line">            @Override</span><br><span class="line">            public void run() &#123;</span><br><span class="line">                super.run();</span><br><span class="line">                constant = &quot;constant2&quot;;</span><br><span class="line">                threadLocal.set(&quot;threadLocal2&quot;);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line"></span><br><span class="line">        thread.start();</span><br><span class="line"></span><br><span class="line">        try &#123;</span><br><span class="line">            //让父线程等待子线程结束之后才能继续运行,保证线程执行完毕.</span><br><span class="line">            thread.join();</span><br><span class="line">        &#125; catch (InterruptedException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        System.out.println(&quot;constant:&quot; + constant);</span><br><span class="line"></span><br><span class="line">        System.out.println(&quot;threadLocal:&quot; + threadLocal.get());</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>输出：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">constant:constant2</span><br><span class="line">threadLocal:threadLocal1</span><br></pre></td></tr></table></figure>
+<p><a href="https://juejin.im/post/5a0e985df265da430e4ebb92" target="_blank" rel="noopener">附相关问题分析</a></p>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/gztkc.github.io/2019/05/14/java-blockingqueue-practice/">
 
     <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
@@ -1041,7 +1214,7 @@
               
                 <a href="/gztkc.github.io/archives/">
               
-                  <span class="site-state-item-count">5</span>
+                  <span class="site-state-item-count">6</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -1063,7 +1236,7 @@
               
               <div class="site-state-item site-state-tags">
                 <a href="/gztkc.github.io/tags/index.html">
-                  <span class="site-state-item-count">6</span>
+                  <span class="site-state-item-count">7</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
